@@ -27,5 +27,5 @@ A python application for managing and searching videos with a graphical user int
 - Responsive and user-friendly interface built with Tkinter.
 
 ## Images of the Program at Work
-![Image of the Homescreen](Screenshot-2026-09-25-162528.png) 
-![Image of a custom video uploaded to the program](Screenshot-2026-09-25-162522.png)
+![Image of the Homescreen](images/Screenshot-2026-09-25-162528.png) 
+![Image of a custom video uploaded to the program](images/Screenshot-2026-09-25-162522.png)
