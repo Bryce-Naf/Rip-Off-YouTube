@@ -253,30 +253,156 @@ class MediaGalleryApp(tk.Tk):
         )
         details.pack(fill="x")
 
+        controls = tk.Frame(media_window, bg="#020617")
+        controls.pack(pady=(0, 10))
+
+        rewind_button = tk.Button(
+            controls,
+            text="⏪ 5s",
+            command=lambda: None,
+            bg="#374151",
+            fg="white",
+            activebackground="#4b5563",
+            font=("Segoe UI", 10, "bold"),
+            padx=12,
+            pady=8,
+            borderwidth=0,
+            cursor="hand2",
+        )
+        rewind_button.pack(side="left", padx=6)
+
+        toggle_button = tk.Button(
+            controls,
+            text="Pause",
+            command=lambda: None,
+            bg="#2563eb",
+            fg="white",
+            activebackground="#1d4ed8",
+            font=("Segoe UI", 10, "bold"),
+            padx=16,
+            pady=8,
+            borderwidth=0,
+            cursor="hand2",
+        )
+        toggle_button.pack(side="left", padx=6)
+
+        skip_button = tk.Button(
+            controls,
+            text="5s ⏩",
+            command=lambda: None,
+            bg="#374151",
+            fg="white",
+            activebackground="#4b5563",
+            font=("Segoe UI", 10, "bold"),
+            padx=12,
+            pady=8,
+            borderwidth=0,
+            cursor="hand2",
+        )
+        skip_button.pack(side="left", padx=6)
+
+        full_button = tk.Button(
+            controls,
+            text="Full Screen",
+            command=lambda: None,
+            bg="#16a34a",
+            fg="white",
+            activebackground="#15803d",
+            font=("Segoe UI", 10, "bold"),
+            padx=14,
+            pady=8,
+            borderwidth=0,
+            cursor="hand2",
+        )
+        full_button.pack(side="left", padx=6)
+
+        progress_var = tk.DoubleVar(value=0)
+        progress_bar = ttk.Progressbar(media_window, orient="horizontal", mode="determinate", length=720, variable=progress_var, maximum=100)
+        progress_bar.pack(pady=(0, 12), padx=18, fill="x")
+
         if media["path"]:
-            self.start_video_playback(media["path"], player_label)
+            self.start_video_playback(
+                media["path"],
+                player_label,
+                toggle_button,
+                rewind_button,
+                skip_button,
+                full_button,
+                progress_bar,
+                progress_var,
+            )
         else:
             player_label.configure(text="Demo clip placeholder", fg="white", font=("Segoe UI", 18, "bold"))
 
-    def start_video_playback(self, file_path, player_label):
+    def start_video_playback(self, file_path, player_label, toggle_button, rewind_button, skip_button, full_button, progress_bar, progress_var):
         try:
             cap = cv2.VideoCapture(file_path)
         except Exception:
             player_label.configure(text="Unable to load video", fg="white", font=("Segoe UI", 16, "bold"))
             return
 
+        player_label.video_capture = cap
+        player_label.is_playing = True
+        player_label.fullscreen_mode = False
+        player_label.video_length = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        player_label.last_frame_time = 0
+
+        window = player_label.master.winfo_toplevel()
+
+        def toggle_playback():
+            player_label.is_playing = not getattr(player_label, "is_playing", True)
+            button_text = "Pause" if player_label.is_playing else "Play"
+            toggle_button.configure(text=button_text)
+            if player_label.is_playing:
+                update_frame()
+
+        def rewind_video():
+            if not player_label.video_capture.isOpened():
+                return
+            current_pos = int(player_label.video_capture.get(cv2.CAP_PROP_POS_FRAMES))
+            target = max(0, current_pos - 150)
+            player_label.video_capture.set(cv2.CAP_PROP_POS_FRAMES, target)
+
+        def skip_video():
+            if not player_label.video_capture.isOpened():
+                return
+            current_pos = int(player_label.video_capture.get(cv2.CAP_PROP_POS_FRAMES))
+            total_frames = int(player_label.video_length)
+            target = min(total_frames - 1, current_pos + 150)
+            player_label.video_capture.set(cv2.CAP_PROP_POS_FRAMES, target)
+
+        def toggle_fullscreen():
+            player_label.fullscreen_mode = not getattr(player_label, "fullscreen_mode", False)
+            window.attributes("-fullscreen", player_label.fullscreen_mode)
+            full_button.configure(text="Window" if player_label.fullscreen_mode else "Full Screen")
+
+        toggle_button.configure(command=toggle_playback)
+        rewind_button.configure(command=rewind_video)
+        skip_button.configure(command=skip_video)
+        full_button.configure(command=toggle_fullscreen)
+
         def update_frame():
-            if not cap.isOpened():
+            if not getattr(player_label, "is_playing", False):
+                return
+
+            if not player_label.video_capture.isOpened():
                 player_label.configure(text="Video unavailable", fg="white", font=("Segoe UI", 16, "bold"))
                 return
 
-            ret, frame = cap.read()
+            ret, frame = player_label.video_capture.read()
             if not ret:
-                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                ret, frame = cap.read()
+                player_label.video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ret, frame = player_label.video_capture.read()
                 if not ret:
                     player_label.configure(text="Video ended", fg="white", font=("Segoe UI", 16, "bold"))
+                    player_label.is_playing = False
+                    toggle_button.configure(text="Play")
                     return
+
+            if player_label.video_length > 0:
+                current_frame = int(player_label.video_capture.get(cv2.CAP_PROP_POS_FRAMES))
+                progress_value = (current_frame / player_label.video_length) * 100
+                progress_var.set(progress_value)
 
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             image = Image.fromarray(rgb)
@@ -286,7 +412,7 @@ class MediaGalleryApp(tk.Tk):
             player_label.image = photo
             player_label.after(33, update_frame)
 
-        update_frame()
+        player_label.after(33, update_frame)
 
 
 if __name__ == "__main__":
