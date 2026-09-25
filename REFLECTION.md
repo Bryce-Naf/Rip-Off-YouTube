@@ -4,8 +4,8 @@
 
 - My approach to asking questions started out very structured, very thought out so that Copilot could understand what I wanted exactly. Once the base program was fully implemented, I started asking simpler and simpler questions, almost just short confirmations or quick mentions of errors that appeared.
 
-![Screenshot of my first AI prompt](images/Screenshot 2026-09-25 161030.png)
-![Screenshot of my first AI prompt](images/Screenshot 2026-09-25 161032.png)
+![Screenshot of entering a prompt to fix an error in the program](images/Screenshot-2026-09-25-161030.png)
+![Screenshot of entering a prompt to add a new feature](images/Screenshot-2026-09-25-161032.png)
 
 - The big part of the process was simply how fast it was. I knew that working with AI was a very fast way of coding, but I don't think I've ever seen this much code that works as efficiently as it does get spat out in so little time in my life.
 
