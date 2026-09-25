@@ -11,7 +11,7 @@ VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".wmv", ".mpeg", ".mpg", ".m
 
 
 class MediaGalleryApp(tk.Tk):
-    def __init__(self):
+    def __init__(self, search_query=""):
         super().__init__()
         self.title("Rip-Off YouTube")
         self.geometry("1320x860")
@@ -19,7 +19,8 @@ class MediaGalleryApp(tk.Tk):
         self.configure(bg="#0f172a")
 
         self.column_count = 4
-        self.search_var = tk.StringVar()
+        self.search_var = tk.StringVar(value=search_query)
+        self.search_query = search_query.strip()
         self.media_items = [
             {
                 "id": 1,
@@ -92,21 +93,40 @@ class MediaGalleryApp(tk.Tk):
         )
         self.title_label.pack(side="left")
 
-        search_frame = tk.Frame(self.toolbar, bg="#0f172a")
-        search_frame.pack(side="left", expand=True, padx=24, fill="x")
+        self.search_frame = tk.Frame(self.toolbar, bg="#0f172a")
+        self.search_frame.pack(side="left", expand=True, padx=24, fill="x")
 
-        search_entry = tk.Entry(
-            search_frame,
+        self.search_entry = tk.Entry(
+            self.search_frame,
             textvariable=self.search_var,
             width=32,
-            bg="#111827",
+            bg="#1e293b",
             fg="white",
             insertbackground="white",
             font=("Segoe UI", 11),
             relief="flat",
+            highlightthickness=1,
+            highlightbackground="#475569",
+            highlightcolor="#60a5fa",
         )
-        search_entry.pack(fill="x", padx=12, pady=6)
-        search_entry.bind("<KeyRelease>", self.filter_gallery)
+        self.search_entry.pack(fill="x", padx=12, pady=6, ipady=8)
+        self.search_entry.bind("<Return>", self.submit_search)
+        self.search_entry.bind("<KP_Enter>", self.submit_search)
+
+        self.search_placeholder = tk.Label(
+            self.search_frame,
+            text="Search...",
+            fg="#94a3b8",
+            bg="#1e293b",
+            font=("Segoe UI", 11),
+            padx=12,
+        )
+        self.search_placeholder.place(in_=self.search_entry, x=0, y=0, relwidth=1, relheight=1)
+        self.search_entry.bind("<FocusIn>", self.hide_search_placeholder)
+        self.search_entry.bind("<FocusOut>", self.show_search_placeholder_if_empty)
+        self.search_entry.bind("<KeyRelease>", self.update_search_placeholder)
+
+        self.show_search_placeholder_if_empty()
 
         upload_button = tk.Button(
             self.toolbar,
@@ -192,6 +212,16 @@ class MediaGalleryApp(tk.Tk):
             for media in self.media_items
             if query in media["title"].lower() or query in media.get("uploader", "").lower()
         ]
+
+    def submit_search(self, event=None):
+        query = self.search_var.get().strip()
+        if not query:
+            self.refresh_gallery()
+            return
+
+        self.destroy()
+        search_app = MediaGalleryApp(search_query=query)
+        search_app.mainloop()
 
     def get_uploader_media(self, uploader_name):
         return [
@@ -283,6 +313,20 @@ class MediaGalleryApp(tk.Tk):
         for col_index in range(self.column_count):
             self.gallery.columnconfigure(col_index, weight=1)
 
+        if not filtered_media:
+            no_results = tk.Label(
+                self.gallery,
+                text="No media found",
+                fg="#e2e8f0",
+                bg="#0f172a",
+                font=("Segoe UI", 20, "bold"),
+                pady=30,
+            )
+            no_results.grid(row=0, column=0, columnspan=self.column_count, sticky="nsew")
+            self.update_idletasks()
+            self._update_scroll_region()
+            return
+
         for index, media in enumerate(filtered_media):
             row = index // self.column_count
             col = index % self.column_count
@@ -293,6 +337,25 @@ class MediaGalleryApp(tk.Tk):
 
     def filter_gallery(self, event=None):
         self.refresh_gallery()
+        self.update_search_placeholder(event)
+
+    def hide_search_placeholder(self, event=None):
+        if self.search_placeholder.winfo_exists():
+            self.search_placeholder.place_forget()
+
+    def show_search_placeholder_if_empty(self, event=None):
+        if self.search_var.get() == "":
+            if self.search_placeholder.winfo_exists():
+                self.search_placeholder.place(in_=self.search_entry, x=0, y=0, relwidth=1, relheight=1)
+        else:
+            if self.search_placeholder.winfo_exists():
+                self.search_placeholder.place_forget()
+
+    def update_search_placeholder(self, event=None):
+        if self.search_var.get() == "":
+            self.search_placeholder.place(in_=self.search_entry, x=0, y=0, relwidth=1, relheight=1)
+        else:
+            self.search_placeholder.place_forget()
 
     def create_media_card(self, parent, media, row, col):
         card = tk.Frame(parent, bg="#1f2937", padx=10, pady=8, bd=0)
